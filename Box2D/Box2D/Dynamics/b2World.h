@@ -111,7 +111,7 @@ public:
 	/// provided AABB.
 	/// @param callback a user implemented callback class.
 	/// @param aabb the query box.
-	void QueryAABB(b2QueryCallback* callback, const b2AABB& aabb) const;
+	void QueryAABB(b2QueryCallback* callback, const b2AABB& aabb, int32 spaceId = 0) const;
 
 	/// Ray-cast the world for all fixtures in the path of the ray. Your callback
 	/// controls whether you get the closest point, any point, or n-points.
@@ -119,7 +119,7 @@ public:
 	/// @param callback a user implemented callback class.
 	/// @param point1 the ray starting point
 	/// @param point2 the ray ending point
-	void RayCast(b2RayCastCallback* callback, const b2Vec2& point1, const b2Vec2& point2) const;
+	void RayCast(b2RayCastCallback* callback, const b2Vec2& point1, const b2Vec2& point2, int32 spaceId = 0) const;
 
 	/// Get the world body list. With the returned body, use b2Body::GetNext to get
 	/// the next body in the world list. A NULL body indicates the end of the list.
@@ -198,6 +198,9 @@ public:
 	/// The body shift formula is: position -= newOrigin
 	/// @param newOrigin the new origin with respect to the old origin
 	void ShiftOrigin(const b2Vec2& newOrigin);
+	
+	void SetSpacesCount(int32 spacesCount);
+	int32 GetSpacesCount() const;
 
 	/// Get the contact manager for testing.
 	const b2ContactManager& GetContactManager() const;
@@ -339,6 +342,15 @@ inline void b2World::SetAutoClearForces(bool flag)
 inline bool b2World::GetAutoClearForces() const
 {
 	return (m_flags & e_clearForces) == e_clearForces;
+}
+
+inline void b2World::SetSpacesCount(int32 spacesCount)
+{
+	m_contactManager.SetSpacesCount(spacesCount);
+}
+inline int32 b2World::GetSpacesCount() const
+{
+	return m_contactManager.GetSpacesCount();
 }
 
 inline const b2ContactManager& b2World::GetContactManager() const

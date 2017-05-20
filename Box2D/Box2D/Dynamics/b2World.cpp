@@ -177,7 +177,7 @@ void b2World::DestroyBody(b2Body* b)
 			m_destructionListener->SayGoodbye(f0);
 		}
 
-		f0->DestroyProxies(&m_contactManager.m_broadPhase);
+		f0->DestroyProxies(m_contactManager.GetBroadPhase(b->m_fixtureSpace));
 		f0->Destroy(&m_blockAllocator);
 		f0->~b2Fixture();
 		m_blockAllocator.Free(f0, sizeof(b2Fixture));
@@ -983,12 +983,12 @@ struct b2WorldQueryWrapper
 	b2QueryCallback* callback;
 };
 
-void b2World::QueryAABB(b2QueryCallback* callback, const b2AABB& aabb) const
+void b2World::QueryAABB(b2QueryCallback* callback, const b2AABB& aabb, int32 spaceId) const
 {
 	b2WorldQueryWrapper wrapper;
-	wrapper.broadPhase = &m_contactManager.m_broadPhase;
+	wrapper.broadPhase = m_contactManager.GetBroadPhase(spaceId);
 	wrapper.callback = callback;
-	m_contactManager.m_broadPhase.Query(&wrapper, aabb);
+	wrapper.broadPhase->Query(&wrapper, aabb);
 }
 
 struct b2WorldRayCastWrapper
@@ -1016,16 +1016,16 @@ struct b2WorldRayCastWrapper
 	b2RayCastCallback* callback;
 };
 
-void b2World::RayCast(b2RayCastCallback* callback, const b2Vec2& point1, const b2Vec2& point2) const
+void b2World::RayCast(b2RayCastCallback* callback, const b2Vec2& point1, const b2Vec2& point2, int32 spaceId) const
 {
 	b2WorldRayCastWrapper wrapper;
-	wrapper.broadPhase = &m_contactManager.m_broadPhase;
+	wrapper.broadPhase = m_contactManager.GetBroadPhase(spaceId);
 	wrapper.callback = callback;
 	b2RayCastInput input;
 	input.maxFraction = 1.0f;
 	input.p1 = point1;
 	input.p2 = point2;
-	m_contactManager.m_broadPhase.RayCast(&wrapper, input);
+	wrapper.broadPhase->RayCast(&wrapper, input);
 }
 
 void b2World::DrawShape(b2Fixture* fixture, const b2Transform& xf, const b2Color& color)
@@ -1216,10 +1216,10 @@ void b2World::DrawDebugData()
 	if (flags & b2Draw::e_aabbBit)
 	{
 		b2Color color(0.9f, 0.3f, 0.9f);
-		b2BroadPhase* bp = &m_contactManager.m_broadPhase;
 
 		for (b2Body* b = m_bodyList; b; b = b->GetNext())
 		{
+			b2BroadPhase* bp = m_contactManager.GetBroadPhase(b->m_fixtureSpace);
 			if (b->IsActive() == false)
 			{
 				continue;
@@ -1256,22 +1256,22 @@ void b2World::DrawDebugData()
 
 int32 b2World::GetProxyCount() const
 {
-	return m_contactManager.m_broadPhase.GetProxyCount();
+	return m_contactManager.GetProxyCount();
 }
 
 int32 b2World::GetTreeHeight() const
 {
-	return m_contactManager.m_broadPhase.GetTreeHeight();
+	return m_contactManager.GetTreeHeight();
 }
 
 int32 b2World::GetTreeBalance() const
 {
-	return m_contactManager.m_broadPhase.GetTreeBalance();
+	return m_contactManager.GetTreeBalance();
 }
 
 float32 b2World::GetTreeQuality() const
 {
-	return m_contactManager.m_broadPhase.GetTreeQuality();
+	return m_contactManager.GetTreeQuality();
 }
 
 void b2World::ShiftOrigin(const b2Vec2& newOrigin)
@@ -1294,7 +1294,7 @@ void b2World::ShiftOrigin(const b2Vec2& newOrigin)
 		j->ShiftOrigin(newOrigin);
 	}
 
-	m_contactManager.m_broadPhase.ShiftOrigin(newOrigin);
+	m_contactManager.ShiftOrigin(newOrigin);
 }
 
 void b2World::Dump()

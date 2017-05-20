@@ -30,8 +30,8 @@
 /// is totally outside it's space, only copy remains (and becames main body)
 
 /// This feature requires:
-///  - teleport joint - DONE!
-///  - spaces - TODO: right now it's using collision masks
+///  - teleport joint
+///  - spaces
 
 #define OFFSET 40.0f
 
@@ -40,12 +40,15 @@ class WrappedWorlds : public Test
 public:
 	WrappedWorlds()
 	{
+		m_world->SetSpacesCount(2);
+		
 		b2Body* body_sp1 = NULL;
 		b2Body* body_sp2 = NULL;
 
 		// Space 1 ground
 		{
 			b2BodyDef bd;
+			bd.space = 0;
 			b2Body* ground = m_world->CreateBody(&bd);
 
 			b2Vec2 vs[11];
@@ -65,14 +68,13 @@ public:
 			
 			b2FixtureDef def;
 			def.shape = &shape;
-			def.filter.categoryBits = 1;
-			def.filter.maskBits = 1;
 			ground->CreateFixture(&def);
 		}
 		
 		// Space 2 ground
 		{
 			b2BodyDef bd;
+			bd.space = 1;
 			b2Body* ground = m_world->CreateBody(&bd);
 
 			b2Vec2 vs[11];
@@ -92,14 +94,13 @@ public:
 
 			b2FixtureDef def;
 			def.shape = &shape;
-			def.filter.categoryBits = 2;
-			def.filter.maskBits = 2;
 			ground->CreateFixture(&def);
 		}
 		
 		// Space 1 Test body
 		{
 			b2BodyDef bd;
+			bd.space = 0;
 			bd.position.Set(0.0f, 5.0f);
 			bd.type = b2_dynamicBody;
 			body_sp1 = m_world->CreateBody(&bd);
@@ -110,14 +111,13 @@ public:
 			b2FixtureDef def;
 			def.shape = &shape;
 			def.density = 20.0f;
-			def.filter.categoryBits = 1;
-			def.filter.maskBits = 1;
 			body_sp1->CreateFixture(&def);
 		}	
 		
 		// Space 2 Test body
 		{
 			b2BodyDef bd;
+			bd.space = 1;
 			bd.position.Set(0.0f - OFFSET, 5.0f);
 			bd.type = b2_dynamicBody;
 			body_sp2 = m_world->CreateBody(&bd);
@@ -128,8 +128,6 @@ public:
 			b2FixtureDef def;
 			def.shape = &shape;
 			def.density = 20.0f;
-			def.filter.categoryBits = 2;
-			def.filter.maskBits = 2;
 			body_sp2->CreateFixture(&def);
 		}
 		// Teleport joint
@@ -144,11 +142,9 @@ public:
 	void Step(Settings* settings)
 	{
 		Test::Step(settings);
-		g_debugDraw.DrawString(5, m_textLine, "This tests various character collision shapes.");
+		g_debugDraw.DrawString(5, m_textLine, "This tests teleport joint and spaces.");
 		m_textLine += DRAW_STRING_NEW_LINE;
-		g_debugDraw.DrawString(5, m_textLine, "Limitation: square and hexagon can snag on aligned boxes.");
-		m_textLine += DRAW_STRING_NEW_LINE;
-		g_debugDraw.DrawString(5, m_textLine, "Feature: edge chains have smooth collision inside and out.");
+		g_debugDraw.DrawString(5, m_textLine, "Limitation: Only space index 0 is interactable in this demo framework.");
 		m_textLine += DRAW_STRING_NEW_LINE;
 	}
 

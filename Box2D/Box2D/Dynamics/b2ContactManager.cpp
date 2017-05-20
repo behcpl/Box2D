@@ -32,6 +32,60 @@ b2ContactManager::b2ContactManager()
 	m_contactFilter = &b2_defaultFilter;
 	m_contactListener = &b2_defaultListener;
 	m_allocator = NULL;
+	
+	m_broadPhasesCount = 1;
+	m_broadPhases = new(b2Alloc(sizeof(b2BroadPhase))) b2BroadPhase();
+}
+b2ContactManager::~b2ContactManager()
+{
+	for (int32 i = 0; i < m_broadPhasesCount; ++i)
+	{
+		m_broadPhases[i].~b2BroadPhase();
+	}
+	b2Free(m_broadPhases);
+}
+
+void b2ContactManager::SetSpacesCount(int32 spacesCount)
+{
+	b2Assert(spacesCount > 0);
+
+	if (spacesCount == m_broadPhasesCount)
+	{
+		return;
+	}
+
+	b2BroadPhase* oldBuffer = m_broadPhases;
+	m_broadPhases = (b2BroadPhase*)b2Alloc(spacesCount * sizeof(b2BroadPhase));
+	if (spacesCount > m_broadPhasesCount)
+	{
+		memcpy(m_broadPhases, oldBuffer, m_broadPhasesCount * sizeof(b2BroadPhase));
+		for (int32 i = m_broadPhasesCount; i < spacesCount; ++i)
+		{
+			new(&m_broadPhases[i]) b2BroadPhase();
+		}
+	}
+	else
+	{
+		memcpy(m_broadPhases, oldBuffer, spacesCount * sizeof(b2BroadPhase));
+		for (int32 i = spacesCount; i < m_broadPhasesCount; ++i)
+		{
+			oldBuffer[i].~b2BroadPhase();
+		}
+	}
+
+	b2Free(oldBuffer);
+	m_broadPhasesCount = spacesCount;
+}
+int32 b2ContactManager::GetSpacesCount() const
+{
+	return m_broadPhasesCount;
+}
+
+b2BroadPhase* b2ContactManager::GetBroadPhase(int32 spaceId) const
+{
+	b2Assert(0 <= spaceId && spaceId < m_broadPhasesCount);
+	
+	return &m_broadPhases[spaceId];
 }
 
 void b2ContactManager::Destroy(b2Contact* c)
@@ -114,7 +168,17 @@ void b2ContactManager::Collide()
 		int32 indexB = c->GetChildIndexB();
 		b2Body* bodyA = fixtureA->GetBody();
 		b2Body* bodyB = fixtureB->GetBody();
-		 
+		int32 spaceA = bodyA->GetSpace();
+		int32 spaceB = bodyB->GetSpace();
+
+		if (spaceA != spaceB)
+		{
+			b2Contact* cNuke = c;
+			c = cNuke->GetNext();
+			Destroy(cNuke);
+			continue;
+		}
+
 		// Is this contact flagged for filtering?
 		if (c->m_flags & b2Contact::e_filterFlag)
 		{
@@ -152,7 +216,7 @@ void b2ContactManager::Collide()
 
 		int32 proxyIdA = fixtureA->m_proxies[indexA].proxyId;
 		int32 proxyIdB = fixtureB->m_proxies[indexB].proxyId;
-		bool overlap = m_broadPhase.TestOverlap(proxyIdA, proxyIdB);
+		bool overlap = m_broadPhases[spaceA].TestOverlap(proxyIdA, proxyIdB);
 
 		// Here we destroy contacts that cease to overlap in the broad-phase.
 		if (overlap == false)
@@ -171,7 +235,10 @@ void b2ContactManager::Collide()
 
 void b2ContactManager::FindNewContacts()
 {
-	m_broadPhase.UpdatePairs(this);
+	for (int32 i = 0; i < m_broadPhasesCount; ++i)
+	{
+		m_broadPhases[i].UpdatePairs(this);
+	}
 }
 
 void b2ContactManager::AddPair(void* proxyUserDataA, void* proxyUserDataB)
@@ -293,4 +360,49 @@ void b2ContactManager::AddPair(void* proxyUserDataA, void* proxyUserDataB)
 	}
 
 	++m_contactCount;
+}
+
+void b2ContactManager::ShiftOrigin(const b2Vec2& newOrigin)
+{
+	for (int32 i = 0; i < m_broadPhasesCount; i++)
+	{
+		m_broadPhases[i].ShiftOrigin(newOrigin);
+	}
+}
+
+int32 b2ContactManager::GetProxyCount() const
+{
+	int32 count = 0;
+	for (int32 i = 0; i < m_broadPhasesCount; i++)
+	{
+		count += m_broadPhases[i].GetProxyCount();
+	}
+	return count;
+}
+int32 b2ContactManager::GetTreeHeight() const
+{
+	int32 height = 0;
+	for (int32 i = 0; i < m_broadPhasesCount; i++)
+	{
+		height = b2Max(height, m_broadPhases[i].GetTreeHeight());
+	}
+	return height;
+}
+int32 b2ContactManager::GetTreeBalance() const
+{
+	int32 balance = 0;
+	for (int32 i = 0; i < m_broadPhasesCount; i++)
+	{
+			balance = b2Max(balance, m_broadPhases[i].GetTreeBalance());
+	}
+	return balance;
+}
+float32 b2ContactManager::GetTreeQuality() const
+{
+	float32 quality = 0.0f;
+	for (int32 i = 0; i < m_broadPhasesCount; i++)
+	{
+		quality += m_broadPhases[i].GetTreeQuality();
+	}
+	return m_broadPhasesCount > 0.0f ? quality / (float)m_broadPhasesCount : 0.0f;
 }

@@ -103,6 +103,8 @@ b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 
 	m_fixtureList = NULL;
 	m_fixtureCount = 0;
+
+	m_fixtureSpace = bd->space;
 }
 
 b2Body::~b2Body()
@@ -152,7 +154,7 @@ void b2Body::SetType(b2BodyType type)
 	m_contactList = NULL;
 
 	// Touch the proxies so that new contacts will be created (when appropriate)
-	b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+	b2BroadPhase* broadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
 	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 	{
 		int32 proxyCount = f->m_proxyCount;
@@ -179,7 +181,7 @@ b2Fixture* b2Body::CreateFixture(const b2FixtureDef* def)
 
 	if (m_flags & e_activeFlag)
 	{
-		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+		b2BroadPhase* broadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
 		fixture->CreateProxies(broadPhase, m_xf);
 	}
 
@@ -267,7 +269,7 @@ void b2Body::DestroyFixture(b2Fixture* fixture)
 
 	if (m_flags & e_activeFlag)
 	{
-		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+		b2BroadPhase* broadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
 		fixture->DestroyProxies(broadPhase);
 	}
 
@@ -281,6 +283,26 @@ void b2Body::DestroyFixture(b2Fixture* fixture)
 
 	// Reset the mass data.
 	ResetMassData();
+}
+
+void b2Body::SetSpace(int32 spaceId)
+{
+	if (spaceId == m_fixtureSpace)
+	{
+		return;
+	}
+	if (m_flags & e_activeFlag)
+	{
+		b2BroadPhase* oldBroadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
+		b2BroadPhase* newBroadPhase = m_world->m_contactManager.GetBroadPhase(spaceId);
+		
+		for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
+		{
+			f->DestroyProxies(oldBroadPhase);
+			f->CreateProxies(newBroadPhase, m_xf);
+		}
+	}
+	m_fixtureSpace = spaceId;
 }
 
 void b2Body::ResetMassData()
@@ -436,7 +458,7 @@ void b2Body::SetTransform(const b2Vec2& position, float32 angle)
 	m_sweep.c0 = m_sweep.c;
 	m_sweep.a0 = angle;
 
-	b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+	b2BroadPhase* broadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
 	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 	{
 		f->Synchronize(broadPhase, m_xf, m_xf);
@@ -449,7 +471,7 @@ void b2Body::SynchronizeFixtures()
 	xf1.q.Set(m_sweep.a0);
 	xf1.p = m_sweep.c0 - b2Mul(xf1.q, m_sweep.localCenter);
 
-	b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+	b2BroadPhase* broadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
 	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 	{
 		f->Synchronize(broadPhase, xf1, m_xf);
@@ -470,7 +492,7 @@ void b2Body::SetActive(bool flag)
 		m_flags |= e_activeFlag;
 
 		// Create all proxies.
-		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+		b2BroadPhase* broadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
 		for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 		{
 			f->CreateProxies(broadPhase, m_xf);
@@ -483,7 +505,7 @@ void b2Body::SetActive(bool flag)
 		m_flags &= ~e_activeFlag;
 
 		// Destroy all proxies.
-		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+		b2BroadPhase* broadPhase = m_world->m_contactManager.GetBroadPhase(m_fixtureSpace);
 		for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 		{
 			f->DestroyProxies(broadPhase);
@@ -542,6 +564,7 @@ void b2Body::Dump()
 	b2Log("  bd.bullet = bool(%d);\n", m_flags & e_bulletFlag);
 	b2Log("  bd.active = bool(%d);\n", m_flags & e_activeFlag);
 	b2Log("  bd.gravityScale = %.15lef;\n", m_gravityScale);
+	b2Log("  bd.space = %d;\n", m_fixtureSpace);
 	b2Log("  bodies[%d] = m_world->CreateBody(&bd);\n", m_islandIndex);
 	b2Log("\n");
 	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
