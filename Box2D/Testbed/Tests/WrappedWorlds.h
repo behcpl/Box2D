@@ -220,33 +220,10 @@ public:
 			fd.density = 20.0f;
 			body->CreateFixture(&fd);
 		}
-
-		// Circle character
-		{
-			b2BodyDef bd;
-			bd.position.Set(-7.0f, 6.0f);
-			bd.type = b2_dynamicBody;
-			bd.allowSleep = false;
-
-			m_character = m_world->CreateBody(&bd);
-
-			b2CircleShape shape;
-			shape.m_radius = 0.25f;
-
-			b2FixtureDef fd;
-			fd.shape = &shape;
-			fd.density = 20.0f;
-			fd.friction = 1.0f;
-			m_character->CreateFixture(&fd);
-		}
 	}
 
 	void Step(Settings* settings)
 	{
-		b2Vec2 v = m_character->GetLinearVelocity();
-		v.x = -5.0f;
-		m_character->SetLinearVelocity(v);
-
 		Test::Step(settings);
 		g_debugDraw.DrawString(5, m_textLine, "This tests various character collision shapes.");
 		m_textLine += DRAW_STRING_NEW_LINE;
@@ -260,8 +237,6 @@ public:
 	{
 		return new WrappedWorlds;
 	}
-
-	b2Body* m_character;
 };
 
 #endif

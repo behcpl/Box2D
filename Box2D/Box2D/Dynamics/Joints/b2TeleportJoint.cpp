@@ -32,14 +32,6 @@ b2TeleportJoint::b2TeleportJoint(const b2TeleportJointDef* def)
 : b2Joint(def)
 {
 	m_offset = def->offset;
-
-	m_localAnchorA.SetZero();
-	m_localAnchorB.SetZero();
-	m_referenceAngle = 0;
-	m_frequencyHz = 0;
-	m_dampingRatio = 0;
-
-	m_impulse.SetZero();
 }
 
 void b2TeleportJoint::InitVelocityConstraints(const b2SolverData& data)
@@ -63,8 +55,8 @@ void b2TeleportJoint::InitVelocityConstraints(const b2SolverData& data)
 
 	b2Rot qA(aA), qB(aB);
 
-	m_rA = b2Mul(qA, m_localAnchorA - m_localCenterA);
-	m_rB = b2Mul(qB, m_localAnchorB - m_localCenterB);
+	m_rA = b2Mul(qA, -m_localCenterA);
+	m_rB = b2Mul(qB, -m_localCenterB);
 
 	// J = [-I -r1_skew I r2_skew]
 	//     [ 0       -1 0       1]
@@ -89,44 +81,13 @@ void b2TeleportJoint::InitVelocityConstraints(const b2SolverData& data)
 	K.ey.z = K.ez.y;
 	K.ez.z = iA + iB;
 
-	if (m_frequencyHz > 0.0f)
+	if (K.ez.z == 0.0f)
 	{
 		K.GetInverse22(&m_mass);
-
-		float32 invM = iA + iB;
-		float32 m = invM > 0.0f ? 1.0f / invM : 0.0f;
-
-		float32 C = aB - aA - m_referenceAngle;
-
-		// Frequency
-		float32 omega = 2.0f * b2_pi * m_frequencyHz;
-
-		// Damping coefficient
-		float32 d = 2.0f * m * m_dampingRatio * omega;
-
-		// Spring stiffness
-		float32 k = m * omega * omega;
-
-		// magic formulas
-		float32 h = data.step.dt;
-		m_gamma = h * (d + h * k);
-		m_gamma = m_gamma != 0.0f ? 1.0f / m_gamma : 0.0f;
-		m_bias = C * h * k * m_gamma;
-
-		invM += m_gamma;
-		m_mass.ez.z = invM != 0.0f ? 1.0f / invM : 0.0f;
-	}
-	else if (K.ez.z == 0.0f)
-	{
-		K.GetInverse22(&m_mass);
-		m_gamma = 0.0f;
-		m_bias = 0.0f;
 	}
 	else
 	{
 		K.GetSymInverse33(&m_mass);
-		m_gamma = 0.0f;
-		m_bias = 0.0f;
 	}
 
 	if (data.step.warmStarting)
@@ -163,47 +124,20 @@ void b2TeleportJoint::SolveVelocityConstraints(const b2SolverData& data)
 	float32 mA = m_invMassA, mB = m_invMassB;
 	float32 iA = m_invIA, iB = m_invIB;
 
-	if (m_frequencyHz > 0.0f)
-	{
-		float32 Cdot2 = wB - wA;
+	b2Vec2 Cdot1 = vB + b2Cross(wB, m_rB) - vA - b2Cross(wA, m_rA);
+	float32 Cdot2 = wB - wA;
+	b2Vec3 Cdot(Cdot1.x, Cdot1.y, Cdot2);
 
-		float32 impulse2 = -m_mass.ez.z * (Cdot2 + m_bias + m_gamma * m_impulse.z);
-		m_impulse.z += impulse2;
+	b2Vec3 impulse = -b2Mul(m_mass, Cdot);
+	m_impulse += impulse;
 
-		wA -= iA * impulse2;
-		wB += iB * impulse2;
+	b2Vec2 P(impulse.x, impulse.y);
 
-		b2Vec2 Cdot1 = vB + b2Cross(wB, m_rB) - vA - b2Cross(wA, m_rA);
+	vA -= mA * P;
+	wA -= iA * (b2Cross(m_rA, P) + impulse.z);
 
-		b2Vec2 impulse1 = -b2Mul22(m_mass, Cdot1);
-		m_impulse.x += impulse1.x;
-		m_impulse.y += impulse1.y;
-
-		b2Vec2 P = impulse1;
-
-		vA -= mA * P;
-		wA -= iA * b2Cross(m_rA, P);
-
-		vB += mB * P;
-		wB += iB * b2Cross(m_rB, P);
-	}
-	else
-	{
-		b2Vec2 Cdot1 = vB + b2Cross(wB, m_rB) - vA - b2Cross(wA, m_rA);
-		float32 Cdot2 = wB - wA;
-		b2Vec3 Cdot(Cdot1.x, Cdot1.y, Cdot2);
-
-		b2Vec3 impulse = -b2Mul(m_mass, Cdot);
-		m_impulse += impulse;
-
-		b2Vec2 P(impulse.x, impulse.y);
-
-		vA -= mA * P;
-		wA -= iA * (b2Cross(m_rA, P) + impulse.z);
-
-		vB += mB * P;
-		wB += iB * (b2Cross(m_rB, P) + impulse.z);
-	}
+	vB += mB * P;
+	wB += iB * (b2Cross(m_rB, P) + impulse.z);
 
 	data.velocities[m_indexA].v = vA;
 	data.velocities[m_indexA].w = wA;
@@ -223,8 +157,8 @@ bool b2TeleportJoint::SolvePositionConstraints(const b2SolverData& data)
 	float32 mA = m_invMassA, mB = m_invMassB;
 	float32 iA = m_invIA, iB = m_invIB;
 
-	b2Vec2 rA = b2Mul(qA, m_localAnchorA - m_localCenterA);
-	b2Vec2 rB = b2Mul(qB, m_localAnchorB - m_localCenterB);
+	b2Vec2 rA = b2Mul(qA, -m_localCenterA);
+	b2Vec2 rB = b2Mul(qB, -m_localCenterB);
 
 	float32 positionError, angularError;
 
@@ -239,50 +173,32 @@ bool b2TeleportJoint::SolvePositionConstraints(const b2SolverData& data)
 	K.ey.z = K.ez.y;
 	K.ez.z = iA + iB;
 
-	if (m_frequencyHz > 0.0f)
+	b2Vec2 C1 =  cB + rB - cA - rA;
+	float32 C2 = aB - aA;
+
+	positionError = C1.Length();
+	angularError = b2Abs(C2);
+
+	b2Vec3 C(C1.x, C1.y, C2);
+	
+	b2Vec3 impulse;
+	if (K.ez.z > 0.0f)
 	{
-		b2Vec2 C1 =  cB + rB - cA - rA;
-
-		positionError = C1.Length();
-		angularError = 0.0f;
-
-		b2Vec2 P = -K.Solve22(C1);
-
-		cA -= mA * P;
-		aA -= iA * b2Cross(rA, P);
-
-		cB += mB * P;
-		aB += iB * b2Cross(rB, P);
+		impulse = -K.Solve33(C);
 	}
 	else
 	{
-		b2Vec2 C1 =  cB + rB - cA - rA;
-		float32 C2 = aB - aA - m_referenceAngle;
-
-		positionError = C1.Length();
-		angularError = b2Abs(C2);
-
-		b2Vec3 C(C1.x, C1.y, C2);
-	
-		b2Vec3 impulse;
-		if (K.ez.z > 0.0f)
-		{
-			impulse = -K.Solve33(C);
-		}
-		else
-		{
-			b2Vec2 impulse2 = -K.Solve22(C1);
-			impulse.Set(impulse2.x, impulse2.y, 0.0f);
-		}
-
-		b2Vec2 P(impulse.x, impulse.y);
-
-		cA -= mA * P;
-		aA -= iA * (b2Cross(rA, P) + impulse.z);
-
-		cB += mB * P;
-		aB += iB * (b2Cross(rB, P) + impulse.z);
+		b2Vec2 impulse2 = -K.Solve22(C1);
+		impulse.Set(impulse2.x, impulse2.y, 0.0f);
 	}
+
+	b2Vec2 P(impulse.x, impulse.y);
+
+	cA -= mA * P;
+	aA -= iA * (b2Cross(rA, P) + impulse.z);
+
+	cB += mB * P;
+	aB += iB * (b2Cross(rB, P) + impulse.z);
 
 	data.positions[m_indexA].c = cA;
 	data.positions[m_indexA].a = aA;

@@ -22,9 +22,8 @@
 
 #include "Box2D/Dynamics/Joints/b2Joint.h"
 
-/// TODO: Weld joint definition. You need to specify local anchor points
-/// TODO: where they are attached and the relative body angle. The position
-/// TODO: of the anchor points is important for computing the reaction torque.
+/// Teleport joint definition. You need to only specify relative offset
+/// to maintain between bodies.
 struct b2TeleportJointDef : public b2JointDef
 {
 	b2TeleportJointDef()
@@ -40,8 +39,10 @@ struct b2TeleportJointDef : public b2JointDef
 	b2Vec2 offset;
 };
 
-/// TODO: A weld joint essentially glues two bodies together. A weld joint may
-/// TODO: distort somewhat because the island constraint solver is approximate.
+/// A teleport joint essentially glues two bodies together like weld joint,
+/// but with a specified separation between them. It's different than weld
+/// joint with distance, because bodies don't acts like they are glued
+/// together, but like they are in separate coordinate system (that was the point)
 class b2TeleportJoint : public b2Joint
 {
 public:
@@ -65,15 +66,8 @@ protected:
 	bool SolvePositionConstraints(const b2SolverData& data);
 
 	b2Vec2 m_offset;
-	float32 m_frequencyHz;
-	float32 m_dampingRatio;
-	float32 m_bias;
 
 	// Solver shared
-	b2Vec2 m_localAnchorA;
-	b2Vec2 m_localAnchorB;
-	float32 m_referenceAngle;
-	float32 m_gamma;
 	b2Vec3 m_impulse;
 
 	// Solver temp
