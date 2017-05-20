@@ -70,9 +70,11 @@
 #include "VaryingRestitution.h"
 #include "VerticalStack.h"
 #include "Web.h"
+#include "WrappedWorlds.h"
 
 TestEntry g_testEntries[] =
 {
+	{"Wrapped Worlds", WrappedWorlds::Create},
 	{"Character Collision", CharacterCollision::Create},
 	{"Tiles", Tiles::Create},
 	{"Heavy on Light", HeavyOnLight::Create},
