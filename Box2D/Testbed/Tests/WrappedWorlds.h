@@ -20,205 +20,124 @@
 #ifndef WRAPPED_WORLDS_H
 #define WRAPPED_WORLDS_H
 
-/// This is a test of typical character collision scenarios. This does not
-/// show how you should implement a character in your application.
-/// Instead this is used to test smooth collision on edge chains.
+/// This is a simple test of spliced worlds.
+/// Only two parts exist here, and there is no dynamic relocation of bodies.
+
+/// The idea is to have very large worlds splited into chunks with acceptable
+/// numeric stability. Each time body is close to border, a copy is made in
+/// another space (moved back to the other edge using offset or chunk size),
+/// and this two bodies are glued using teleport joint. When original body
+/// is totally outside it's space, only copy remains (and becames main body)
+
+/// This feature requires:
+///  - teleport joint - DONE!
+///  - spaces - TODO: right now it's using collision masks
+
+#define OFFSET 40.0f
+
 class WrappedWorlds : public Test
 {
 public:
 	WrappedWorlds()
 	{
-		// Ground body
+		b2Body* body_sp1 = NULL;
+		b2Body* body_sp2 = NULL;
+
+		// Space 1 ground
 		{
 			b2BodyDef bd;
 			b2Body* ground = m_world->CreateBody(&bd);
 
-			b2EdgeShape shape;
-			shape.Set(b2Vec2(-20.0f, 0.0f), b2Vec2(20.0f, 0.0f));
-			ground->CreateFixture(&shape, 0.0f);
-		}
-
-		// Collinear edges with no adjacency information.
-		// This shows the problematic case where a box shape can hit
-		// an internal vertex.
-		{
-			b2BodyDef bd;
-			b2Body* ground = m_world->CreateBody(&bd);
-
-			b2EdgeShape shape;
-			shape.Set(b2Vec2(-8.0f, 1.0f), b2Vec2(-6.0f, 1.0f));
-			ground->CreateFixture(&shape, 0.0f);
-			shape.Set(b2Vec2(-6.0f, 1.0f), b2Vec2(-4.0f, 1.0f));
-			ground->CreateFixture(&shape, 0.0f);
-			shape.Set(b2Vec2(-4.0f, 1.0f), b2Vec2(-2.0f, 1.0f));
-			ground->CreateFixture(&shape, 0.0f);
-		}
-
-		// Chain shape
-		{
-			b2BodyDef bd;
-			bd.angle = 0.25f * b2_pi;
-			b2Body* ground = m_world->CreateBody(&bd);
-
-			b2Vec2 vs[4];
-			vs[0].Set(5.0f, 7.0f);
-			vs[1].Set(6.0f, 8.0f);
-			vs[2].Set(7.0f, 8.0f);
-			vs[3].Set(8.0f, 7.0f);
+			b2Vec2 vs[11];
+			vs[0].Set(-25.0f, 15.0f);
+			vs[1].Set(-20.0f, 12.0f);
+			vs[2].Set(-15.0f, 5.0f);
+			vs[3].Set(-10.0f, 7.0f);
+			vs[4].Set(-5.0f, 6.0f);
+			vs[5].Set(0.0f, 3.0f);
+			vs[6].Set(5.0f, 4.0f);
+			vs[7].Set(10.0f, 0.0f);
+			vs[8].Set(15.0f, 2.0f);
+			vs[9].Set(20.0f, 0.0f);
+			vs[10].Set(25.0f, 1.0f);
 			b2ChainShape shape;
-			shape.CreateChain(vs, 4);
-			ground->CreateFixture(&shape, 0.0f);
+			shape.CreateChain(vs, 11);
+			
+			b2FixtureDef def;
+			def.shape = &shape;
+			def.filter.categoryBits = 1;
+			def.filter.maskBits = 1;
+			ground->CreateFixture(&def);
 		}
-
-		// Square tiles. This shows that adjacency shapes may
-		// have non-smooth collision. There is no solution
-		// to this problem.
+		
+		// Space 2 ground
 		{
 			b2BodyDef bd;
 			b2Body* ground = m_world->CreateBody(&bd);
 
-			b2PolygonShape shape;
-			shape.SetAsBox(1.0f, 1.0f, b2Vec2(4.0f, 3.0f), 0.0f);
-			ground->CreateFixture(&shape, 0.0f);
-			shape.SetAsBox(1.0f, 1.0f, b2Vec2(6.0f, 3.0f), 0.0f);
-			ground->CreateFixture(&shape, 0.0f);
-			shape.SetAsBox(1.0f, 1.0f, b2Vec2(8.0f, 3.0f), 0.0f);
-			ground->CreateFixture(&shape, 0.0f);
-		}
-
-		// Square made from an edge loop. Collision should be smooth.
-		{
-			b2BodyDef bd;
-			b2Body* ground = m_world->CreateBody(&bd);
-
-			b2Vec2 vs[4];
-			vs[0].Set(-1.0f, 3.0f);
-			vs[1].Set(1.0f, 3.0f);
-			vs[2].Set(1.0f, 5.0f);
-			vs[3].Set(-1.0f, 5.0f);
+			b2Vec2 vs[11];
+			vs[0].Set(-25.0f, 2.0f);
+			vs[1].Set(-20.0f, 0.0f);
+			vs[2].Set(-15.0f, 1.0f);
+			vs[3].Set(-10.0f, 1.0f);
+			vs[4].Set(-5.0f, 3.0f);
+			vs[5].Set(0.0f, 0.0f);
+			vs[6].Set(5.0f, 2.0f);
+			vs[7].Set(10.0f, 4.0f);
+			vs[8].Set(15.0f, 4.0f);
+			vs[9].Set(20.0f, 4.0f);
+			vs[10].Set(25.0f, 10.0f);
 			b2ChainShape shape;
-			shape.CreateLoop(vs, 4);
-			ground->CreateFixture(&shape, 0.0f);
-		}
+			shape.CreateChain(vs, 11);
 
-		// Edge loop. Collision should be smooth.
+			b2FixtureDef def;
+			def.shape = &shape;
+			def.filter.categoryBits = 2;
+			def.filter.maskBits = 2;
+			ground->CreateFixture(&def);
+		}
+		
+		// Space 1 Test body
 		{
 			b2BodyDef bd;
-			bd.position.Set(-10.0f, 4.0f);
-			b2Body* ground = m_world->CreateBody(&bd);
-
-			b2Vec2 vs[10];
-			vs[0].Set(0.0f, 0.0f);
-			vs[1].Set(6.0f, 0.0f);
-			vs[2].Set(6.0f, 2.0f);
-			vs[3].Set(4.0f, 1.0f);
-			vs[4].Set(2.0f, 2.0f);
-			vs[5].Set(0.0f, 2.0f);
-			vs[6].Set(-2.0f, 2.0f);
-			vs[7].Set(-4.0f, 3.0f);
-			vs[8].Set(-6.0f, 2.0f);
-			vs[9].Set(-6.0f, 0.0f);
-			b2ChainShape shape;
-			shape.CreateLoop(vs, 10);
-			ground->CreateFixture(&shape, 0.0f);
-		}
-
-		b2Body* b1;
-		b2Body* b2;
-		// Square character 1
-		{
-			b2BodyDef bd;
-			bd.position.Set(-3.0f, 8.0f);
+			bd.position.Set(0.0f, 5.0f);
 			bd.type = b2_dynamicBody;
-			bd.allowSleep = false;
-			//bd.fixedRotation = true;
-
-			b1 = m_world->CreateBody(&bd);
+			body_sp1 = m_world->CreateBody(&bd);
 
 			b2PolygonShape shape;
 			shape.SetAsBox(0.5f, 0.5f);
 
-			b2FixtureDef fd;
-			fd.shape = &shape;
-			fd.density = 20.0f;
-			//fd.filter.groupIndex = 2;
-			//fd.filter.categoryBits = 0;
-			b1->CreateFixture(&fd);
-		}
-		// Square character 1 clone
+			b2FixtureDef def;
+			def.shape = &shape;
+			def.density = 20.0f;
+			def.filter.categoryBits = 1;
+			def.filter.maskBits = 1;
+			body_sp1->CreateFixture(&def);
+		}	
+		
+		// Space 2 Test body
 		{
 			b2BodyDef bd;
-			bd.position.Set(3.0f, 8.0f);
+			bd.position.Set(0.0f - OFFSET, 5.0f);
 			bd.type = b2_dynamicBody;
-			bd.allowSleep = false;
-
-			b2 = m_world->CreateBody(&bd);
+			body_sp2 = m_world->CreateBody(&bd);
 
 			b2PolygonShape shape;
 			shape.SetAsBox(0.5f, 0.5f);
 
-			b2FixtureDef fd;
-			fd.shape = &shape;
-			fd.density = 20.0f;
-			b2->CreateFixture(&fd);
+			b2FixtureDef def;
+			def.shape = &shape;
+			def.density = 20.0f;
+			def.filter.categoryBits = 2;
+			def.filter.maskBits = 2;
+			body_sp2->CreateFixture(&def);
 		}
+		// Teleport joint
 		{
-			b2TeleportJointDef jb12;
-			//jb12.Initialize(b1, b2, b2Vec2(0.0f, 8.0f));
-			//jb12.localAnchorA.Set(10, 1);
-			//jb12.localAnchorB.Set(10, 1);
-			jb12.bodyA = b1;
-			jb12.bodyB = b2;
-			jb12.offset.Set(20, 0);
+			b2TeleportJointDef teleport_desc;
+			teleport_desc.Initialize(body_sp1, body_sp2, b2Vec2(-OFFSET, 0.0f));
 
-			b2TeleportJoint* joint = (b2TeleportJoint*)m_world->CreateJoint(&jb12);
-		}
-
-		// Hexagon character
-		{
-			b2BodyDef bd;
-			bd.position.Set(-5.0f, 8.0f);
-			bd.type = b2_dynamicBody;
-			bd.fixedRotation = true;
-			bd.allowSleep = false;
-
-			b2Body* body = m_world->CreateBody(&bd);
-
-			float32 angle = 0.0f;
-			float32 delta = b2_pi / 3.0f;
-			b2Vec2 vertices[6];
-			for (int32 i = 0; i < 6; ++i)
-			{
-				vertices[i].Set(0.5f * cosf(angle), 0.5f * sinf(angle));
-				angle += delta;
-			}
-
-			b2PolygonShape shape;
-			shape.Set(vertices, 6);
-
-			b2FixtureDef fd;
-			fd.shape = &shape;
-			fd.density = 20.0f;
-			body->CreateFixture(&fd);
-		}
-
-		// Circle character
-		{
-			b2BodyDef bd;
-			bd.position.Set(3.0f, 5.0f);
-			bd.type = b2_dynamicBody;
-			bd.fixedRotation = true;
-			bd.allowSleep = false;
-
-			b2Body* body = m_world->CreateBody(&bd);
-
-			b2CircleShape shape;
-			shape.m_radius = 0.5f;
-
-			b2FixtureDef fd;
-			fd.shape = &shape;
-			fd.density = 20.0f;
-			body->CreateFixture(&fd);
+			b2TeleportJoint* joint = (b2TeleportJoint*)m_world->CreateJoint(&teleport_desc);
 		}
 	}
 
