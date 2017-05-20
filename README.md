@@ -1,8 +1,8 @@
 # Box2D wrapped worlds fork
 
 This fork implements two major feature that I require for my open world game:
- - Spaces (work in progress) - extends collision filtering allowing multiple independent layers of bodies to coexist inside one world.
- - Teleport joint - glues two bodies using defined offset.
+ - Spaces - extends collision filtering allowing multiple independent layers of bodies to coexist inside one world
+ - Teleport joint - glues two bodies using defined offset
 
 **Intended use**
  - Split very large world to chunks with acceptable precision
@@ -11,7 +11,7 @@ This fork implements two major feature that I require for my open world game:
 
 ## Demos
 
-Simple demo (no dynamic space switching) is available named Wrapped Worlds
+Simple demo (no dynamic space switching) is available, named Wrapped Worlds.
 
 ## License
 
