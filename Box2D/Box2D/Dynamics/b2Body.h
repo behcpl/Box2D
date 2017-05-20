@@ -67,6 +67,7 @@ struct b2BodyDef
 		type = b2_staticBody;
 		active = true;
 		gravityScale = 1.0f;
+		space = 0;
 	}
 
 	/// The body type: static, kinematic, or dynamic.
@@ -120,6 +121,8 @@ struct b2BodyDef
 
 	/// Scale the gravity applied to this body.
 	float32 gravityScale;
+
+	int32 space;
 };
 
 /// A rigid body. These are created via b2World::CreateBody.
@@ -360,6 +363,9 @@ public:
 	b2Fixture* GetFixtureList();
 	const b2Fixture* GetFixtureList() const;
 
+	void SetSpace(int32 spaceId);
+	int32 GetSpace() const;
+
 	/// Get the list of all joints attached to this body.
 	b2JointEdge* GetJointList();
 	const b2JointEdge* GetJointList() const;
@@ -453,6 +459,7 @@ private:
 
 	b2Fixture* m_fixtureList;
 	int32 m_fixtureCount;
+	int32 m_fixtureSpace;
 
 	b2JointEdge* m_jointList;
 	b2ContactEdge* m_contactList;
@@ -694,6 +701,11 @@ inline b2Fixture* b2Body::GetFixtureList()
 inline const b2Fixture* b2Body::GetFixtureList() const
 {
 	return m_fixtureList;
+}
+
+inline int32 b2Body::GetSpace() const
+{
+	return m_fixtureSpace;
 }
 
 inline b2JointEdge* b2Body::GetJointList()

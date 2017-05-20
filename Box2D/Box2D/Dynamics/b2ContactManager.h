@@ -31,6 +31,11 @@ class b2ContactManager
 {
 public:
 	b2ContactManager();
+	~b2ContactManager();
+
+	void SetSpacesCount(int32 spacesCount);
+	int32 GetSpacesCount() const;
+	b2BroadPhase* GetBroadPhase(int32 spaceId) const;
 
 	// Broad-phase callback.
 	void AddPair(void* proxyUserDataA, void* proxyUserDataB);
@@ -40,13 +45,23 @@ public:
 	void Destroy(b2Contact* c);
 
 	void Collide();
-            
-	b2BroadPhase m_broadPhase;
+	
+	void ShiftOrigin(const b2Vec2& newOrigin);
+
+	int32 GetProxyCount() const;
+	int32 GetTreeHeight() const;
+	int32 GetTreeBalance() const;
+	float32 GetTreeQuality() const;
+
 	b2Contact* m_contactList;
 	int32 m_contactCount;
 	b2ContactFilter* m_contactFilter;
 	b2ContactListener* m_contactListener;
 	b2BlockAllocator* m_allocator;
+	
+protected:
+	b2BroadPhase* m_broadPhases;
+	int32 m_broadPhasesCount;
 };
 
 #endif

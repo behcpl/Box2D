@@ -210,7 +210,7 @@ void b2Fixture::Refilter()
 	}
 
 	// Touch each proxy so that new pairs may be created
-	b2BroadPhase* broadPhase = &world->m_contactManager.m_broadPhase;
+	b2BroadPhase* broadPhase = world->m_contactManager.GetBroadPhase(m_body->GetSpace());
 	for (int32 i = 0; i < m_proxyCount; ++i)
 	{
 		broadPhase->TouchProxy(m_proxies[i].proxyId);
