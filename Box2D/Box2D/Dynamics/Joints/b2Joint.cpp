@@ -182,6 +182,10 @@ void b2Joint::Destroy(b2Joint* joint, b2BlockAllocator* allocator)
 		allocator->Free(joint, sizeof(b2MotorJoint));
 		break;
 
+	case e_teleportJoint:
+		allocator->Free(joint, sizeof(b2TeleportJoint));
+		break;
+
 	default:
 		b2Assert(false);
 		break;

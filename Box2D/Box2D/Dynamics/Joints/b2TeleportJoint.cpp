@@ -32,6 +32,8 @@ b2TeleportJoint::b2TeleportJoint(const b2TeleportJointDef* def)
 : b2Joint(def)
 {
 	m_offset = def->offset;
+
+	m_impulse.SetZero();
 }
 
 void b2TeleportJoint::InitVelocityConstraints(const b2SolverData& data)
